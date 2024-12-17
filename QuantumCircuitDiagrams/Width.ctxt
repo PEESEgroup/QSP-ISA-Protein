@@ -1,0 +1,26 @@
+#BlueJ class context
+comment0.target=Width
+comment0.text=\r\n\ Class\ representing\ a\ function\ that\ takes\ a\ gate\ and\ returns\ how\ wide\ it\ is,\r\n\ including\ all\ forms\ of\ padding.\r\n
+comment1.params=g
+comment1.target=double\ computeWidth(Gate)
+comment1.text=\r\n\ Computes\ the\ width\ of\ the\ gate\ [g],\ including\ inner\ padding\ but\r\n\ excluding\ outer\ padding\r\n
+comment10.params=s
+comment10.target=double\ computeGateWidth(java.lang.String)
+comment2.params=g
+comment2.target=double\ computeBlockWidth(Gate[])
+comment2.text=\r\n\ Computes\ the\ width\ of\ the\ block\ of\ gates\ [g].\ Essentially,\ width\ of\r\n\ widest\ gate\ +\ outer\ padding.\r\n
+comment3.params=
+comment3.target=Width()
+comment4.params=g
+comment4.target=java.lang.Double\ processControlXGate(ControlXGate)
+comment5.params=g
+comment5.target=java.lang.Double\ processControlGate(ControlGate)
+comment6.params=g
+comment6.target=java.lang.Double\ processRotationGate(RotationGate)
+comment7.params=g
+comment7.target=java.lang.Double\ processUniformControlGate(UniformControlGate)
+comment8.params=b
+comment8.target=java.lang.Double\ processBigBlock(BigBlock)
+comment9.params=s
+comment9.target=double\ computeStringWidth(java.lang.String)
+numComments=11

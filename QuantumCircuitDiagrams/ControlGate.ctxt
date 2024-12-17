@@ -1,0 +1,11 @@
+#BlueJ class context
+comment0.target=ControlGate
+comment1.params=controls\ target\ type
+comment1.target=ControlGate(int[],\ int,\ java.lang.String)
+comment2.params=
+comment2.target=int\ minQubit()
+comment3.params=
+comment3.target=int\ maxQubit()
+comment4.params=o
+comment4.target=java.lang.Object\ invoke(Operation)
+numComments=5

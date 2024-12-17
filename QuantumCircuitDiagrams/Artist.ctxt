@@ -1,0 +1,19 @@
+#BlueJ class context
+comment0.target=Artist
+comment1.params=circuit\ gc\ startX\ startY
+comment1.target=void\ draw(QuantumCircuit,\ javafx.scene.canvas.GraphicsContext,\ double,\ double)
+comment2.params=gc\ startX\ startY\ n
+comment2.target=Artist(javafx.scene.canvas.GraphicsContext,\ double,\ double,\ int)
+comment3.params=width
+comment3.target=void\ nextBlock(double)
+comment4.params=g
+comment4.target=java.lang.Object\ processControlXGate(ControlXGate)
+comment5.params=g
+comment5.target=java.lang.Object\ processControlGate(ControlGate)
+comment6.params=g
+comment6.target=java.lang.Object\ processUniformControlGate(UniformControlGate)
+comment7.params=g
+comment7.target=java.lang.Object\ processRotationGate(RotationGate)
+comment8.params=b
+comment8.target=java.lang.Object\ processBigBlock(BigBlock)
+numComments=9

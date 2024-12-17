@@ -1,0 +1,192 @@
+---
+title: Revised algorithm description section
+---
+
+# ISA framework, formal description and implementation
+
+In this work, we propose an approximate quantum state preparation
+framework, which we call "Iterative Sparse Approximation\" (ISA). Let
+the target state be $\mathinner{|{x_0}\rangle}$. Then the ISA framework
+transforms $\mathinner{|{x_0}\rangle}$ to $\mathinner{|{x_1}\rangle}$,
+then $\mathinner{|{x_1}\rangle}$ to $\mathinner{|{x_2}\rangle}$, and so
+on, until it reaches some state $\mathinner{|{x_m}\rangle}$, such that
+$$|\mathinner{\langle{0|x_0}\rangle}|^2 < |\mathinner{\langle{0|x_1}\rangle}|^2 < ... < |\mathinner{\langle{0|x_m}\rangle}|^2$$
+And $$|\mathinner{\langle{0|x_m}\rangle}|^2 \geq 1 - \epsilon$$ Each
+transformation from $\mathinner{|{x_i}\rangle}$ to
+$\mathinner{|{x_{i + 1}}\rangle}$ generates a state closer to
+$\mathinner{|{0}\rangle}$; these steps are called "refinements.\" The
+sequence of gates used in each refinement step are combined to create
+the state preparation sequence for $\mathinner{|{x_0}\rangle}$.
+
+To refine $\mathinner{|{x}\rangle}$, the ISA framework selects an index
+subset $K \subset \{0,,,2^n - 1\}$ and constructs the sparse, usually
+non-normalized approximation
+$$\mathinner{|{x}\rangle} \approx \mathinner{|{x'}\rangle} = \sum_{k \in K}{\mathinner{\langle{k | x}\rangle}}$$
+If
+$\mathinner{|{x}\rangle} = \sum_{i=0}^{2^n - 1}{c_i \mathinner{|{i}\rangle}}$,
+then
+$\mathinner{|{x'}\rangle} = \sum_{k \in K}{c_k\mathinner{|{k}\rangle}}$,
+showing that $\mathinner{|{x'}\rangle}$ has at most $|K|$ non-zero
+elements and is therefore sparse.
+
+Next, the sparse state preparation method for $\mathinner{|{x'}\rangle}$
+is adapted towards the refinement of $\mathinner{|{x}\rangle}$. Because
+$\mathinner{|{x'}\rangle}$ approximates $\mathinner{|{x}\rangle}$, the
+state preparation sequence for $\mathinner{|{x'}\rangle}$ approximately
+prepares $\mathinner{|{x}\rangle}$. However, $\mathinner{|{x'}\rangle}$
+and $\mathinner{|{x}\rangle}$ are not the same state, motivating the
+need for an adaptation step. Index subset selection $K$ ("Select\"),
+constructing and preparing $\mathinner{|{x'}\rangle}$ ("Prepare\"), and
+adapting the state preparation sequence for $\mathinner{|{x'}\rangle}$
+to refine $\mathinner{|{x}\rangle}$ ("Adapt\") constitute the central
+steps in the ISA framework, as shown in Algorithm 1.
+
+![image](isa_algo.png){width="80%"}
+
+In the remainder of this section, we describe our specific
+implementation of the ISA framework for linear nearest neighbor
+architectures. In section x.1, we describe the two types of index
+subsets $K$ considered for the Select step, as well as the procedure for
+choosing one. In section x.2, we describe our implementation of the
+Prepare step for each index subset type. In section x.3, describe our
+implementation of the Adapt step. Finally, in section x.4, we describe
+an additional step in our implementation, called "Refinement by RZ-RY,\"
+in which the starting state $\mathinner{|{x_0}\rangle}$ is first refined
+to $\mathinner{|{x_1}\rangle}$ using RZ and RY gates before applying the
+ISA framework.
+
+## Index subsets and implementing Select
+
+Type 1 index subsets are those of the form: $$K(b) = \{0, b\}$$ For some
+$b$ between 1 and $2^n - 1$ inclusive.
+
+Type 2 index subsets take one of two different forms:
+$$K^{(+)}(a, p) = \{a * 2^{p + 2} + i * 2^p | 0 \leq i \leq 3\} \cup \{i * 2^p | 0 \leq i \leq 3\}$$
+$$K^{(-)}(a, p) = \{a + i * 2^p | 0 \leq i \leq 3\} \cup \{i * 2^p | 0 \leq i \leq 3\}$$
+For some $a$ and $p$. For the $K^{(+)}$ case,
+$0 \leq a \leq 2^{n - p - 2} - 1$; in the $K^{(-)}$ case,
+$0 \leq a \leq 2^p - 1$. In both cases, $0 \leq p \leq n - 2$. When
+written in binary, the indices in $K^{(+)}$ subsets are those where the
+left-most $n - p - 2$ bits are either $a$ or zeroes, the right-most $p$
+bits are zeroes, and the middle two bits can be any length-2 bitstring,
+and the indices in $K^{(-)}$ subsets are those where the left-most
+$n - p - 2$ bits are zeroes, the right-most $p$ bits are either $a$ or
+zeroes, and the middle two bits can be any length-2 bitstring.
+
+When refining a state $\mathinner{|{x}\rangle}$, each subset $K$
+corresponds to a non-normalized sparse approximation
+$\mathinner{|{x'(K)}\rangle}$. Let CX_count($K$) be the number of CX
+gates required to prepare $\mathinner{|{x'(K)}\rangle}$. Then, at the
+Select step, we choose the index subset $K$ that maximizes the fidelity
+increase ratio:
+$$\text{fidelity increase ratio}(K) = \frac{\mathinner{\langle{x'(K)|x'(K)}\rangle} 
+- |\mathinner{\langle{0|x}\rangle}|^2}{\text{CX\_count}(K) + 1}$$ This
+quantity is named "fidelity increase ratio\" because if
+$\mathinner{|{y(K)}\rangle}$ is the state after applying the state
+preparation sequence of $\mathinner{|{x'(K)}\rangle}$ to
+$\mathinner{|{x}\rangle}$, then
+$|\mathinner{\langle{0|y(K)}\rangle}|^2 = \mathinner{\langle{x'(K)|x'(K)}\rangle}$,
+corresponding to a fidelity increase of
+$|\mathinner{\langle{0|y(K)}\rangle}|^2 - |\mathinner{\langle{0|x}\rangle}|^2 
+= \mathinner{\langle{x'(K)|x'(K)}\rangle} - |\mathinner{\langle{0|x}\rangle}|^2$.
+This improvement is divided by the number of CX gates required to
+achieve it to compute the fidelity increase per CX gate; +1 is added to
+the denominator to prevent division by zero. Thus, at each step, $K$ is
+chosen to maximize the projected fidelity increase per CX gate applied.
+
+## Implementing Prepare
+
+Type 1 and Type 2 index subsets give rise to Type 1 and Type 2 sparse
+quantum states. Our preparation method for these states is an extension
+of \[Gleinig and Hoefler\] for limited connectivity architectures.
+
+Type 1 index subsets give rise to quantum states of the form
+$$\mathinner{|{x'(b)}\rangle} = c_0\mathinner{|{0}\rangle} + c_b\mathinner{|{b}\rangle}$$
+For some $b > 0$ and complex amplitudes $c_0$ and $c_b$. To prepare such
+states, a sequence of CX gates, $g_1g_2...g_l$ is used to move
+$\mathinner{|{b}\rangle}$ to a sequence of other basis states,
+$\mathinner{|{b_1}\rangle}$, $\mathinner{|{b_2}\rangle}$, \...,
+$\mathinner{|{b_l}\rangle}$ such that
+$$g_i\mathinner{|{b_{i - 1}}\rangle} = \mathinner{|{b_i}\rangle} \quad \text{for all} \quad 1 \leq i \leq l, b_0 = b$$
+$$b_l = 2^j \quad \text{for some } j$$ CX gates leave
+$\mathinner{|{0}\rangle}$ unchanged, therefore, this sequence of CX
+gates transforms $\mathinner{|{x'(b)}\rangle}$ to a new state:
+$$\mathinner{|{x''}\rangle} = c_0\mathinner{|{0}\rangle} + c_b\mathinner{|{2^j}\rangle}$$
+Which is a one-qubit state, and can be prepared using an RZ and RY gate
+\[ref\]. Let $CXD(b) = l$ be the minimum number of CX gates required to
+prepare $\mathinner{|{x'}\rangle}$; the formula for $CXD(b)$ is
+presented in the Appendix. Then, each CX gate $g_i$ can be computed by
+selecting a CX gate such that $CXD(b_i) = CXD(b_{i-1}) - 1$.
+
+The Type 2 index subsets $K^{(+)}(a, p)$ give rise to Type 2 quantum
+states of the form:
+$$\mathinner{|{x'^{(+)}(a, p)}\rangle} = (\mathinner{|{a}\rangle} \otimes \mathinner{|{\psi_1}\rangle} + \mathinner{|{0}\rangle} \otimes \mathinner{|{\psi_2}\rangle}) \otimes \mathinner{|{0_p}\rangle}$$.
+Where $\mathinner{|{\psi_1}\rangle}$ and $\mathinner{|{\psi_2}\rangle}$
+are non-normalized, two-qubit states and $\mathinner{|{0_p}\rangle}$
+represents all zeroes in the lowest $p$ qubits. To prepare such states,
+a sequence of CX gates, $g_1g_2...g_m$ are applied to the upper
+$n - p - 2$ qubits to transform $\mathinner{|{a}\rangle}$ to a sequence
+of other basis states, $\mathinner{|{a_1}\rangle}$,
+$\mathinner{|{a_2}\rangle}$, \..., $\mathinner{|{a_m}\rangle}$ such that
+$$g_i\mathinner{|{a_{i - 1}}\rangle} = \mathinner{|{a_i}\rangle} \quad \text{for all} \quad 1 \leq i \leq m, \mathinner{|{a_0}\rangle} = \mathinner{|{a}\rangle}$$
+$$\mathinner{|{a_m}\rangle} = \mathinner{|{1}\rangle}$$ Again, CX gates
+leave $\mathinner{|{0}\rangle}$ unchanged, so this sequence transforms
+$\mathinner{|{x'^{(+)}(a, p)}\rangle}$ to
+$$\mathinner{|{x''^{(+)}}\rangle} = (\mathinner{|{1}\rangle} \otimes \mathinner{|{\psi_1}\rangle} + \mathinner{|{0}\rangle} \otimes \mathinner{|{\psi_2}\rangle}) \otimes \mathinner{|{0_p}\rangle}$$
+The result is a three-qubit state, which can be prepared exactly using
+three CX gates \[ref\]. We give our construction for linear nearest
+neighbor architectures in the Appendix. In addition, let
+$CXD^{(+)}(p) = m$ be the minimum number of CX gates required to
+transform $\mathinner{|{a}\rangle}$ to $\mathinner{|{1}\rangle}$; the
+formula for $CXD^{(+)}$ is given in the Appendix.
+
+In the special case where $a = 0$, the index subset $K^{(+)}(a, p)$
+gives rise to a two qubit state:
+$$\mathinner{|{x'}\rangle} = \mathinner{|{0_{n - p - 2}}\rangle} \otimes \mathinner{|{\psi_0}\rangle} \otimes \mathinner{|{0_p}\rangle}$$
+Which can be prepared using one CX gate \[ref\].
+
+The Type 2 index subsets $K^{(-)}(a, p)$ give rise to quantum states of
+the form
+$$\mathinner{|{x'^{(-)}(a, p)}\rangle} = \mathinner{|{0_{n-p-2}}\rangle} \otimes (\mathinner{|{\psi_1}\rangle} \otimes \mathinner{|{a}\rangle} + \otimes \mathinner{|{\psi_2}\rangle} \otimes \mathinner{|{0}\rangle})$$
+Where $\mathinner{|{\psi_1}\rangle}$, $\mathinner{|{\psi_2}\rangle}$,
+and $\mathinner{|{0_{n-p-2}}\rangle}$ are defined as in the
+$K^{(+)}(a, p)$ case. Note that these states are the same as those in
+\[ref equation\], but with the qubits in reverse order. Thus, the same
+state preparation method applies to this case.
+
+## Implementing Adapt
+
+If $K$ is a Type 1 index subset, then the corresponding sparse
+approximation takes the form
+$$\mathinner{|{x'}\rangle} = c_0\mathinner{|{0}\rangle} + c_b\mathinner{|{b}\rangle}$$.
+And the state preparation method involves applying CX gates to move
+$\mathinner{|{b}\rangle}$ to $\mathinner{|{2^i}\rangle}$, before
+applying a one-qubit state preparation procedure. To adapt this to
+refining $\mathinner{|{x}\rangle}$, we re-imagine the process of moving
+$\mathinner{|{b}\rangle}$ using CX gates as an iterative merging
+procedure using CX, RZ, and RY gates. If $b$ and $b'$ are two length-$n$
+bitstrings that differ in only the $i$th bit and both $b$ and $b'$ have
+a 1 at position $j$ for $|i - j| = 1$, then the amplitude at
+$\mathinner{|{b}\rangle}$ can be merged into the amplitude at
+$\mathinner{|{b'}\rangle}$ using the following procedure:
+
+\[subroutine description\]
+
+Granted, this procedure will generally shuffle the amplitudes of many
+other bases, but it leaves the amplitude at $\mathinner{|{0}\rangle}$
+unchanged (up to a phase). Then, the procedure for adapting
+$\mathinner{|{x'}\rangle}$ for refining $\mathinner{|{x}\rangle}$ is:
+
+\[Refinement by ISA, Type 1\]
+
+At each iteration, the algorithm constructs a list of all possible CX
+gates that modify $\mathinner{|{b}\rangle}$. For each propective CX
+gate, the projected fidelity increase ratio is updated, and the maximal
+fidelity increase ratio is selected.
+
+## Refinement by RZ-RY
+
+Copy and paste from original text? then
+
+Our specific implementation of the ISA framework is summarized in
+Algorithm 2. \[pseudo-code for specific ISA implementation\].

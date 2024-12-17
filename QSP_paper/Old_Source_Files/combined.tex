@@ -1,0 +1,691 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{braket}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{float}
+\graphicspath{ {./figures} }
+
+\begin{document}
+
+\title{Approximate Quantum State Preparation is Iterated Sparse State Preparation on Linear Neighbor Architectures}
+\author{Ralph Wang, Akshay Ajagekar, Fengqi You}
+\date{15 September 2023}
+\maketitle
+
+\section*{Abstract}
+Quantum algorithms promise exponential speedups in many computational routines.
+One important
+subroutine in many such quantum algorithms is quantum state preparation, the
+encoding of data vectors into the amplitudes of the quantum register. In this
+work, we propose a novel, non-variational framework for quantum state 
+preparation by iteratively applying sparse quantum state preparation methods.
+We compare our method against exact state preparation using uniformly controlled
+gates (UCG) and against variational quantum circuit (VQC) approaches. Under the
+assmption of linear nearest neighbor architecture, taking single-qubit rotations
+and CX as basis gates, the iterative sparse approximation (ISA) method is shown 
+to use 25\% fewer CX gates compared to exact state preparation and orders of 
+magnitude faster to compute than the variational quantum circuit approaches. In
+addition, our method is flexible with respect to CX gate count restrictions, 
+target preparation fidelity, and hardware connectivity.
+
+\section{Introduction}
+Quantum algorithms promise exponential speedups in many computation routines, 
+such as quantum Fourier Transform \cite{shor1994algorithms} and solving linear systems \cite{PhysRevLett.103.150502}. One important
+subroutine in such quantum algorithms is quantum state preparation, or the 
+encoding of classical data into the amplitudes of a quantum computer \cite{aaronson2015read}. Current
+quantum computers experience significant noise and quantum state preparation
+often contributes signficiantly towards the runtime cost of quantum
+algorithms \cite{aaronson2015read}. Therefore, implementing quantum state preparation efficently on
+quantum computers is essential towards useful quantum algorithms on near term
+quantum computers.
+
+The cost of a quantum circuit is often measured in terms of gate count and
+circuit depth \cite{1629135}. Gate count refers to the number of two-qubit gates in the
+quantum circuit - single-qubit gates are not counted because they are much
+simpler to implement and induce less noise. Most quantum algorithms use
+control-X (CX) gates as their two-qubit gate; in this work, we follow suit, and
+use the number of CX gates as the gate count. Circuit depth refers to the 
+longest subsequence of non-commutative gates in the circuit. This is the number 
+of quantum gates that must be executed one after the other. Thus, the greater 
+the circuit depth, the longer it takes to execute, which leads to more noise 
+from qubit decoherence.
+
+The problem of efficient quantum state preparation has received much attention
+over the years. Shende, Bullock, Markov (2006) \cite{1629135} proposed an $O(n2^n)$ algorithm
+for exact quantum state preparation using $O(2^n)$ CX gates, $O(2^n)$ circuit
+depth. Their algorithm starts by rotating the first qubit, then iteratively 
+rotating successive qubits conditioned on preceding qubits, contributing both
+a general framework of so-called "uniformly-controlled gates." Bergholm et al
+(2005) \cite{bergholm2005quantum} proposed an optimization on the method from \cite{1629135}, reducing the number of
+CX gates by a factor of two. Plesch and Bruckner adapted unitary 
+synthesis optimizations from \cite{1629135} towards quantum state preparation,
+reducing the gate count by a factor of 1/24 \cite{PhysRevA.83.032302}. In 2023, Sun et al proposed a 
+depth-efficient decomposition of uniformly controlled rotations, leading to a 
+quantum state preparation method with a constant factor more CX gates, but with
+$O(\frac{2^n}{n})$ depth \cite{10044235}. They also showed how ancilla qubits could be used to
+compress the circuit depth even further, sacrificing space for time. Zhang et al
+took this idea one step further, proposing a method that prepares
+$n$-qubit quantum states using $O(2^n)$ qubits, but only $O(n)$ depth \cite{zhang2022quantum}. All of
+the proposed algorithms return asymptotically optimal gate counts in a
+reasonable computation time.
+
+Another recent trend in the field has been to study sparse quantum state
+preparation \cite{PhysRevA.106.022617}. Sparse quantum states on $n$ qubits are characterized by having
+at most $m$ nonzero amplitudes, where $m < 2^n$. The efficient
+preparation of sparse quantum states find applications in solving linear
+systems \cite{PhysRevLett.103.150502}, the quantum Byzantine agreement \cite{10.1145/1060590.1060662}, among other quantum algorithms \cite{9272350}.
+Many sparse quantum state preparation algorithms have been proposed.
+Gleinig and Hoefler \cite{10.1109/DAC18074.2021.9586240} proposed an algorithm that starts with the
+target sparse state, then iteratively merges the non-zero amplitudes together
+until only one non-zero amplitude remains; reversing this process then generates
+a gate sequence for preparing that non-zero state. By contrast, Malvetti, Iten,
+Colbeck \cite{Malvetti2021quantumcircuits} proposed a general framework for implementing sparse isometries, which
+includes quantum state preparation as a subset, although their algorithm takes
+longer to compute. More recently, sparse state preparation using decision
+diagrams was proposed to improve merging efficiency, achieving around 30\%
+reduction in CX gate count when $m$ was $O(n^2)$ or larger \cite{PhysRevA.106.022617}.
+
+These existing algorithms generally assume that CX gates can be applied to any
+two qubits. However, current state-of-the-art quantum computers, such as IBM's
+433-qubit Osprey processor, allow CX gates to only be applied to
+nearest-neighbor qubits \cite{bravyi2022future}. Each quantum computer has its own physical layout of
+the qubits; to model these connectivity restrictions, much work has examined
+adapting quantum algorithms towards linear nearest neighbor architectures, or
+quantum hardwares where the $i$th qubit's nearest neighbors are the $i-1$th and
+$i+1$th qubit \cite{1629135, bergholm2005quantum, 4782917, Saeedi_Wille_Drechsler_2010}. In particular, \cite{bergholm2005quantum} showed how the uniformly
+controlled rotation decomposition from \cite{1629135} can be optimized for 
+linear nearest neighbor architectures. 
+
+One popular, hardware-adaptive alternative to exact quantum state preparation 
+has been approximate encoding using variational quantum circuits \cite{PhysRevResearch.4.023136}. A generic, 
+shallow, hardware-efficient quantum circuit is used to approximately prepare 
+quantum states, then a variational optimization procedure is used to adjust the
+single-qubit gates until the quantum 
+circuit approximately prepares the desired state \cite{PhysRevA.98.032309}. This approach has the 
+advantage of being hardware adaptive and often requiring fewer CX gates compared to the 
+exact quantum state preparation methods \cite{Cerezo_Sone_Volkoff_Cincio_Coles_2021}. However, optimizing the single-qubit gates is 
+nontrivial. Indeed, McClean et al \cite{McClean_Boixo_Smelyanskiy_Babbush_Neven_2018} proved that if the 
+quantum circuit structure exhibits no biases towards any particular quantum 
+state, then the gradient with respect to preparation fidelity vanishes 
+exponentially, causing the angle-tuning procedure to take exponential time; the
+authors dub this the "barren plateau" problem. Local cost functions \cite{Cerezo_Sone_Volkoff_Cincio_Coles_2021}, cost
+landscape tuning \cite{rivera2021avoiding}, and few-shot approximations \cite{PhysRevResearch.4.023136} have been examined as solutions
+towards barren plateaus, but the problems remains open.
+
+In this work, we address the problem of approximate state preparation without
+using any variational optimization procedure. Specifically, we propose a novel 
+framework for preparing dense quantum states by iteratively applying sparse 
+quantum state preparation methods. In doing so, we suggest that advances in 
+sparse quantum state preparation can be adapted to improving dense quantum state
+preparation. To account for potential hardware connectivity restrictions, we
+analyze our algorithm with respect to linear nearest neighbor connectivity then
+discuss extensions towards different hardware connectivity graphs. We benchmark
+our algorithm on randomly sampled dense quantum states, up to 14 qubits, and
+compare it against the UCG method and two VQC-based methods. By comparing the
+gate counts and computational runtimes, we demonstrate that our method is able
+to find quickly find efficient gate sequences for high-fidelity quantum state 
+preparation. The major contributions of this work are summarized as follows:
+\begin{itemize}
+  \item A novel, non-variational framework for approximate quantum state 
+    preparation is proposed.
+  \item A connection between sparse quantum state preparation and approximate,
+    dense quantum state preparation is established
+  \item A specific implementation of the proposed framework is described and
+    shown to effectively prepare random quantum states.
+\end{itemize}
+
+In section 2, we define the approximate quantum state preparation
+problem. In section 3, we describe some sparse state preparation methods 
+then describe our proposed algorithm for dense quantum state
+preparation using those sparse state preparation methods. In section 4, we
+compare the proposed algorithm against exact quantum state preparation and two
+variational quantum algorithms, comparing their CX gate counts and classical
+computation times. We discuss the results and conclude in section 5.
+Some additional technical results are shown in the Appendix.
+
+\section{Preliminaries}
+\subsection{Notation}
+For this work, qubit indices start at zero, and start from the right. This means
+$\ket{0010}$ is the result of applying an $X$ gate to qubit 1 of $\ket{0000}$.
+
+Single-qubit rotation gates will be written with the rotation angle first, then
+the qubit index. For example, an RZ gate, angle $\pi/2$, applied to qubit 1,
+will be written as RZ($\pi/2$, 1). Control-X (CX) gates will be written with the
+control qubit first. For example, a CX gate applied to qubit 2, with qubit 1 as
+the control, will be written as CX(1, 2).
+
+Unless otherwise specified, $n$ will represent the number of qubits in the
+system, and $N = 2^n$ will represent the number of amplitudes to be encoded
+onto those $n$ qubits.
+
+\subsection{Quantum State Preparation Definition}
+Quantum state preparation is formally defined as: Given an arbitrary quantum
+state $\ket{x}$ and a family of quantum gates $G$, return a sequence of quantum
+gates $g_1, g_2, ..., g_m$ from $G$ such that 
+$g_mg_{m-1} ... g_1\ket{0} = \ket{x}$ \cite{1629135}.
+
+In this paper, we assume $G$ contains continuously parameterized RX, RY, and RZ
+gates, as well as the CX gate. This gate set was chosen
+because these gates are both easy to reason about and easy to compile into
+the native gate set of existing quantum computers \cite{moro2021quantum}.
+
+In this work, we tackle the following version of the approximate quantum state
+preparation problem: given an arbitrary quantum state $\ket{x}$, return a
+sequence of quantum gates $g_1, g_2, ..., g_m$ such that
+$$g_mg_{m-1} ... g_1\ket{x} = \ket{y}$$
+And
+$$|\braket{y|0}|^2 \geq 1 - \epsilon$$
+Where $\epsilon$ represents a small error. The quantity $1 - \epsilon$ is
+also known as the fidelity.
+
+This version of approximate quantum state preparation can be applied towards
+approximately preparing arbitrary quantum states. Indeed, if for some state 
+$\ket{x}$, a sequence of gates $g_1$, $g_2$, ..., $g_m$ can be found for
+transforming $\ket{x}$ to $\ket{y}$, a state close to $\ket{0}$, then inverting
+each gate and reversing the sequence generates a sequence of gates for 
+approximately preparing $\ket{x}$ starting from $\ket{0}$.
+Indeed, if the gate sequence $g_m^{\dagger}$, $g_{m - 1}^{\dagger}$, ..., 
+$g_1^{\dagger}$ was applied to $\ket{0}$ to achieve the state $\ket{x'}$, then
+$$|\braket{x|x'}|^2 = |\bra{x}(g_1^{\dagger}g_2^{\dagger} ... g_m^{\dagger}\ket{0})|^2$$
+$$ = |\braket{y|0}|^2 \geq 1 - \epsilon$$
+Thus showing that the prepared state has a fidelity of $1 - \epsilon$.
+
+\section{Proposed Algorithm, Formal Description}
+In this work, we propose an approximate quantum state algorithm, which we call
+"iterative sparse approximation" (ISA). Let the target
+state be $\ket{x}$, and let $l$ be a list of quantum gates. Let the 
+\textit{current state}, $\ket{c}$, be the state achieved by applying each gate 
+in $l$ to $\ket{x}$. As the algorithm proceeds, gates will be added
+to $l$. When the algorithm terminates, $l$ will be returned. 
+The current state $\ket{c}$ starts out as $\ket{x}$, but becomes a 
+state close to $\ket{0}$ by the end of the algorithm. Let $c_i$ denote
+the amplitude at basis gate $\ket{i}$ in the current state, that is,
+$$c_i = \braket{i|c}$$
+The $\ket{c}$ and $c_i$ values are updated as gates are added to $l$.
+
+The algorithm starts by using RZ and RY gates to bring the current state
+closer to $\ket{0}$ (Refinement without CX gates), then iterates sparse 
+approximations of the current state to bring the current state as close to 
+$\ket{0}$ as needed (Refinement by ISA). The 
+algorithm can be described by the pseudo-code:
+\begin{algorithmic}
+	\State{$l \gets []$}
+	\State{$\ket{c} \gets \ket{x}$} 
+	\Comment{Current state is $\ket{c}$}
+	\State{//Refinement by RZ-RY}
+	\While{some qubit has no gates applied}
+	\State{$i \gets $ select some qubit}
+	\State{$l \mathrel{+}= \text{RZ}(qubit=i)$}
+	\State{$l \mathrel{+}= \text{RY}(qubit=i)$}
+	\State{Update $\ket{c}$}
+	\EndWhile
+	\State{//Refinement by ISA}
+	\While{$|\braket{0|c}|^2 < 1 - \epsilon$} 
+	\Comment{check termination condition}
+	\State{$\ket{c'} \gets $ select sparse approximation of $\ket{c}$}
+	\State{$g \gets $ state preparation sequence of $\ket{c'}$, adapted 
+	  for $\ket{c}$}
+	\State{$l \mathrel{+}= g$}
+	\State{update $\ket{c}$}
+	\EndWhile
+	\State{\Return{$l$}}
+\end{algorithmic}
+
+In the remainder of this section, we describe the details of the algorithm.
+First, we show the sparse quantum state preparation methods to be adapted to
+our algorithm. Next, we describe the details of refinement by RZ-RY. Then,
+we elaborate on the method for selecting a sparse approximation in refinement
+by ISA, before finishing with the method for adapting sparse quantum state
+preparation for dense quantum states.
+
+\subsection{Sparse Quantum State Preparation}
+This work relies on the efficient preparation of two special types of sparse
+quantum states. We enumerate these special states here, along with their
+efficient preparation method. Our preparation methods presented here are
+inspired by the methods presented in \cite{Malvetti2021quantumcircuits}.
+
+The first type of special sparse quantum states, which we denote ``Type 1 sparse
+states," contains exactly two non-zero
+amplitudes. To prepare such states, first use a sequence of $RY(\pi)$ gates to
+move one of the amplitudes to the $\ket{0}$ basis vector. Next, a sequence of
+CX gates is used to move the other amplitude to a basis vector $\ket{a}$ such
+that $a$ is a power of 2.
+Finally, an RZ and an RY gate can be used to merge the two amplitudes together,
+transforming the starting (target) state to $\ket{0}$. For example, if
+$$\ket{x} = \frac{\sqrt{2}}{2}\ket{010} + \frac{\sqrt{2}}{2}i\ket{101}$$
+First, $\text{RY}(\pi, 1)$ is applied to move 
+$\frac{\sqrt{2}}{2}\ket{010}$ to the $\ket{000}$ position:
+$$\text{RY}(\pi, 1) \ket{x} = \frac{\sqrt{2}}{2}\ket{000} 
+- \frac{\sqrt{2}}{2}i\ket{111} := \ket{x_1}$$
+Next, CX gates are applied to move the other amplitude to a basis vector
+$\ket{a}$ such that $a$ has exactly one 1-bit in its binary representation. In
+this case, we arbitrarily choose $a = 100$. Then, CX(1, 0) and
+CX(2, 1) need to be applied in sequence to move $\ket{111}$ to $\ket{100}$.
+$$\text{CX}(2, 1) \text{CX}(1, 0) \ket{x_1} = \frac{\sqrt{2}}{2}\ket{000} 
+- \frac{\sqrt{2}}{2}i\ket{100} := \ket{x_2}$$
+Next, an RZ gate is used to zero out the complex phase on $\ket{100}$:
+$$\text{RZ}(\pi/2, 2)\ket{x_2} = \frac{\sqrt{2}}{2}\ket{000} 
++ \frac{\sqrt{2}}{2}\ket{100} := \ket{x_3}
+\text{(ignoring global phase)}$$
+Finally, an RY gate is used to merge the amplitudes together:
+$$\text{RY}(-\pi/2, 2)\ket{x_3} = \ket{000}$$
+
+The second type of special sparse quantum state, denoted ``Type 2 sparse states,"
+are $n$-qubit states that can be written in the form:
+\begin{equation} \label{type2sparse}
+\ket{x} = (\ket{a_p} \otimes \ket{x_1} + \ket{0_p} \otimes \ket{x_2})
+  \otimes \ket{0_q}
+\end{equation}
+Where $\ket{x_1}$ and $\ket{x_2}$ are arbitrary, non-normalized two-qubit states, $\ket{a_p}$ is
+a nonzero $p$-bit basis state, $\ket{0_p}$ is a $p$-bit basis state,
+$\ket{0_q}$ is a $q$-bit basis state ($q$ may be zero), and $p + q + 2 = n$.
+Type 2 sparse states are those that can be written as the sum of two two-qubit
+states and contain at most eight non-zero amplitudes.
+
+To efficiently prepare such states, CX gates are first used to move $\ket{a}$ to
+$\ket{1}$. The resultant quantum state will be a dense, three-qubit state,
+which can be prepared exactly using three CX gates. Optimal, exact three-qubit
+state preparation is well known in the literature \cite{PhysRevA.77.032320}; 
+we describe our implementation in the Appendix.
+
+\subsection{Refinement by RZ-RY}
+First, the current state's maximal amplitude basis state, $\ket{b}$, is 
+identified. While there is a qubit that does not yet have any gates applied to 
+it, do:
+\begin{enumerate}
+	\item Collect the set of qubit indices that do not yet have any gates
+		applied to them, call this set $I$.
+	\item For each $i$ in $I$, compute $b_i$ as the result of flipping the 
+		$i$th bit in $b$.
+	\item Select $i$ such that $c_{b_i}$ is maximal.
+	\item Compute $\theta_z = phase(c_b) - phase(c_{b_i})$. If 
+		$b_i < b$, flip the sign of $\theta_z$.
+	\item Compute $\theta_y = arctan(|\frac{c_b}{c_{b_i}}|)$. If
+		$b_i < b$, flip the sign of $\theta_y$.
+	\item Add RZ($\theta_z$, $i$) and RY($\theta_y$, $i$) to $l$, in that
+		order. Update $\ket{c}$, and set $b \gets min(b, b_i)$
+\end{enumerate}
+Each time step 4 of the loop is run, the $i^*$th bit in $b$ is set to
+$0$. Thus, at the end of this procedure, $b=0$, and the amplitude at $\ket{0}$
+of the current state is at least as large as the largest amplitude in $\ket{x}$.
+
+\subsection{Refinement by ISA: Selecting a sparse approximation}
+To select a sparse approximation, each possible sparse approximation is
+enumerated. Then, the \textit{fidelity increase ratio} is computed for each
+candidate sparse approximation. Finally, the sparse approximation with the
+largest fidelity increase ratio is selected.
+
+\subsubsection{Type 1 sparse approximations}
+During refinement by RZ-RY, the largest amplitude in the $\ket{x}$ was moved to 
+$\ket{0}$ in $\ket{c}$. Thus, if $\ket{c}$ is to be approximated by a Type 1 
+sparse state, one of the non-zero amplitudes is chosen to be $\ket{0}$. The 
+other amplitude can be chosen freely. Thus, we index Type 1 sparse 
+approximations by the other non-zero amplitude index:
+$$\ket{x_1(i)} = c_0\ket{0} + c_i\ket{i}$$
+The subscript 1 refers to Type 1 sparse approximation; the $i$ refers to the
+index of the non-zero amplitude. In general, these sparse approximations are 
+non-normalized states. The corresponding fidelity increase ratio is:
+$$\text{fidelity increase ratio}(\ket{x_1(i)}) = \frac{|c_i|^2}{\alpha + 
+\text{CXdist}(i)}$$
+Where CXdist($i$) is the minimum number of CX gates required to transform 
+$\ket{i}$ to $\ket{i'}$ such that $i'$ is a power of 2. This is also the number
+of CX gates required to prepare $\ket{x_1(i)}$, as shown in section 4.1. The 
+algorithm for computing
+CXdist($i$) will be given in the Appendix.
+
+The term $\alpha$ is a regularization term to prevent division by zero. For our
+implementation, we set $\alpha = 1$.
+
+\subsubsection{Type 2 sparse approximations}
+Each Type 2 sparse state contains eight non-zero amplitudes; the indices of
+those non-zero amplitudes are uniquely determined by $p$ and $a_p$ \ref{type2sparse}. As with Type 1 sparse approximation, we index each candidate 
+Type 2 sparse approximation by its non-zero amplitudes:
+$$\ket{x_2(a, a_p)} = ((\ket{a_p}\bra{a_p} + \ket{0_p}\bra{0_p}) \otimes I \otimes I \otimes \ket{0_q}\bra{0_q})\ket{c}$$
+In effect, $\ket{x_2(a, a_p)}$ is $\ket{c}$ but with all but the specified eight
+amplitudes set to zero. Like Type 1 sparse approximations, the Type 2 sparse
+approximations are generally non-normalized states.
+
+For some non-normalized two-qubit states $\ket{\psi(a, a_p)_1}$, 
+$\ket{\psi(a, a_p)_2}$. Then, the fidelity increase ratio can be computed as:
+$$\text{fidelity increase ratio($a$, $a_p$)} = \frac{|\braket{x_2(a, a_p) | x_2(a, a_p)}|^2 - |c_0|^2}{\alpha + \text{CXdist}_1(a_p) + 3}$$
+Where $\text{CXdist}_1(a)$ is the number of CX gates required to transform
+$\ket{a}$ to $\ket{1}$. The plus three in the denominator accounts for the 
+three CX gates required to perform the three-qubit quantum state preparation
+base case, thus, $\text{CXdist}_1(a_p) + 3$ is the number of CX gates required
+to prepare $\ket{x_2(a, a_p)}$. The algorithm for computing $\text{CXdist}_1$
+will be given in the Appendix.
+
+To choose a sparse approximation for the current state, all possible Type 1 and
+Type 2 sparse approximations are considered and the approximation with the
+largest fidelity increase ratio is selected.
+
+\subsection{ISA: Adapting sparse approximation towards state preparation}
+Once a sparse approximation $\ket{x'}$ is selected, the corresponding state 
+preparation method is applied to $\ket{c}$ to bring it closer to $\ket{0}$.
+\subsubsection{Type 1 sparse approximation}
+If a Type 1 sparse approximation is selected, then the non-normalized sparse 
+approximation takes the form
+$\ket{c} \approx \ket{c'} = c_0\ket{0} + c_b\ket{b}$
+for some $b$. The corresponding state preparation method moves $\ket{b}$ to a 
+power of 2, then merges it with $\ket{0}$ using an RZ and an RY
+gate. This is adapted to $\ket{c}$ by the following procedure:
+
+While $b$ is not a power of 2, do:
+\begin{enumerate}
+	\item Enumerate all $b'$ such that $b' \neq b$ and there exists some CX gate that
+		transforms $\ket{b}$ to $\ket{b'}$. Let the set of all such
+		$b'$ be denoted $B$.
+	\item For each $b'$ in $B$, calculate the move increase ratio as:
+		$$\text{move increase ratio}(b')= \frac{|c_b|^2 + |c_{b'}|^2}{1 
+        + min(\text{CXdist}(b), \text{CXdist}(b'))}$$
+	\item Select $b^*$ from $B$ such that move increase ratio($b^*$) is
+        maximal.
+	\item If $\text{CXdist}(b) < \text{CXdist}(b^*)$, then merge the
+		amplitudes at $\ket{b}$ and $\ket{b'}$ into $\ket{b}$ without 
+		moving the amplitude at $\ket{0}$. Otherwise, merge the 
+		amplitudes into $\ket{b^*}$ without moving the amplitude at 
+		$\ket{0}$ and assign $b \leftarrow b^*$.
+\end{enumerate}
+After this loop terminates, merge the amplitudes at $\ket{b}$ and $\ket{0}$ 
+into $\ket{0}$.
+
+To merge the amplitudes at $\ket{a}$ and $\ket{b}$ into $\ket{b}$, without
+moving the amplitude at $\ket{0}$, use the following procedure:
+\begin{enumerate}
+	\item For this merging to be possible, $a$ and $b$ must differ by
+		exactly one bit in their binary representation. Let this
+		difference be at position $i$. Also, let $c_a$ be the amplitude
+		of the current state at $\ket{a}$ and let $c_b$ be the amplitude
+		at $\ket{b}$. Also $a$ and $b$ must both have a $1$ adjacent to
+		position $i$ in their binary representation, let this position
+		be $j$.
+	\item Compute $\theta_z = phase(c_b) - phase(c_a)$. If $a < b$, flip the
+		sign of $\theta_z$.
+	\item Compute $\theta_y = arctan(|\frac{c_b}{c_a}|)$. If $a < b$, flip
+		the sign of $\theta_y$.
+	\item Add RZ($\theta_z$, $i$), RY($\theta_y$, $i$), CX($j$, $i$), and
+		RY($-\theta_y$, $i$), in that order, to $l$ and update 
+		$\ket{c}$.
+\end{enumerate}
+This procedure usually changes the complex phase of $c_0$, but this is
+inconsequential towards the algorithm.
+
+To merge the amplitude at $\ket{b}$ into $\ket{0}$, the method from refinement
+by RZ-RY can be applied.
+
+\subsection{Implementing a Type 2 sparse approximation}
+If a Type 2 sparse approximation is selected, then the sparse approximation
+takes the form:
+$$\ket{c} \approx \ket{c'} = (\ket{a_p} \otimes \ket{x_a} + 
+  \ket{0_p} \otimes \ket{x_0}) \otimes \ket{0_q}$$
+Where $\ket{x_a}$ and $\ket{x_0}$ are non-normalized two-qubit states.
+Define $\ket{x_i}$ as:
+$$\ket{x_i} = (\ket{i}\bra{i} \otimes I \otimes I \otimes \ket{0_q}\bra{0_q})\ket{c}$$ 
+The sparse state preparation method for Type 2 sparse approximations moves 
+$\ket{a}$ to $\ket{1}$, then use three-qubit state preparation to merge 
+$\ket{1} \otimes \ket{x_1}$ into $\ket{0} \otimes \ket{x_0}$. This method can be
+adapted to $\ket{c}$ by the following procedure.
+\begin{enumerate}
+	\item Enumerate all $a'$ such that $a \neq a'$ and $\ket{a}$ can be 
+        transformed to $\ket{a'}$ by applying a CX gate; let the set of all such
+        $a'$ be denoted $A$.
+	\item For each $a'$ in $A$, compute its move increase ratio as:
+		$$\text{move increase ratio}(a') = \frac{\frac{1}{2}(\braket{x_{a'} | x_{a'}}) 
+        + \frac{1}{2}\sqrt{(\braket{x_{a'}|x_{a'}} 
+        - \braket{x_a|x_a})^2 + 4|\braket{x_a'|x_a}|^2}}
+        {3 + min(\text{CXdist}_1(a), \text{CXdist}_1(a'))}$$
+        The numerator represents the magnitude of $\ket{x_a'}$ after
+        approximately merging $\ket{a}$ into $\ket{a'}$; the denominator
+        represents one CX gate used to perform this merging plus the number of
+        CX gates remaining in the implementation of this sparse approximation.
+	\item Select $a^*$ to be the element of $A$ with the largest
+		fidelity increase ratio
+	\item If $\text{CXdist}_1(a) < \text{CXdist}_1(a^*)$, then merge 
+		$\ket{a^*} \otimes \ket{x_{a^*}}$ into $\ket{a} \otimes \ket{x_a}$ while
+        leaving $\ket{0} \otimes \ket{x_0}$ unchanged. Otherwise, merge 
+        $\ket{a} \otimes \ket{x_a}$ into $\ket{a^*} \otimes \ket{x_{a*}}$
+		and assign $a \leftarrow a^*$.
+\end{enumerate}
+After the loop terminates, $a = 1$, and the three-qubit state preparation
+procedure can be used to merge $\ket{a}$ into $\ket{0}$.
+
+Merging $\ket{a} \otimes \ket{x_a}$ into $\ket{b} \otimes \ket{x_b}$
+while leaving $\ket{0} \otimes \ket{x_0}$ unchanged usually cannot be done 
+exactly using three or fewer CX gates. Therefore, in our implementation, we
+perform this merging only approximately. In addition, this can be done only
+if $\ket{a}$ can be transformed to $\ket{b}$ using some CX gate, CX($i$, $j$).
+Then, approximate merging is implemented by the following procedure:
+\begin{enumerate}
+    \item If $a < b$, let $\ket{v_0} = \ket{x_a}$ and $\ket{v_1} = \ket{x_b}$.
+    Otherwise, let $\ket{v_1} = \ket{x_a}$ and $\ket{v_0} = \ket{x_b}$.
+    \item Compute $\theta_z = -phase(\braket{v_0|v_1})$.
+    \item Compute $\theta_y = \frac{1}{2}\left(-\pi - arccos\Bigl(\frac{\braket{v_0 | v_0}
+      - \braket{v_1 | v_1}}{2\sqrt{(\braket{v_0 | v_0} - \braket{v_1 | v_1})^2
+      + |\braket{v_0 | v_1}|^2}}\Bigr)\right)$
+    \item Add RZ($\theta_z$, $j$), RY($\theta_y$, $j$), CX($i$, $j$), and
+      RY($-\theta_y$, $j$) to $l$ and update $\ket{c}$.
+\end{enumerate}
+
+\section{Numerical Experiments}
+\subsection{Method}
+We compare our ISA method against the exact state preparation method using
+uniformly controlled gates (UCG) \cite{bergholm2005quantum}, alternating ansatz
+VQC \cite{zhang2020toward}, and ADAPT-VQE \cite{grimsley2019adaptive} methods.
+All
+experiments were performed assuming the linear nearest neighbors architecture;
+for the proposed method and variational methods, the target state preparation
+fidelity was set to 0.95. For the variational methods, simple gradient descent
+was used, with $1 - fidelity$ as the cost function, and a constant learning
+rate of 0.1. For ADAPT-VQE, initialized the circuit to contain a layer of RY
+rotations, followed by a layer of RZ rotations. For the operator pool, we used 
+the following circuit block, translated across different possible positions:
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{adapt_block}
+\caption{The circuit block used in ADAPT-VQE for state preparation. The operator
+pool is generated by translating this block across different pairs of qubits.}
+\end{figure}
+
+In addition, we modified the ADAPT-VQE procedure. Instead of comparing gradient
+sizes to choose an operator, we performed 30 gradient descent steps for each
+candidate operator and selected the candidate that gave the best
+improvement. Then, after adding that operator, the entire gate sequence was
+trained for 200 additional steps. 
+
+The implementation of the UCG method
+was taken from the Python package \textit{qclib} \cite{Araujo_Quantum_computing_library_2023}. All other methods were 
+implemented from scratch in C++. 
+
+In our experiments, we tested the number of CX gates used and the computation
+time as a function of number of qubits in the target state. We tested qubit
+numbers from 5 to 14, inclusive. For each qubit number, 100 quantum states were
+uniformly, randomly sampled.
+
+For the runtime experiments, the number of CX gates in the alternating
+ansatz VQC was set to $\frac{1}{2}2^n$. This number was specifically chosen
+because each CX gate attaches four free parameters, therefore, approximately
+$\frac{1}{2}2^n$ CX gates are necessary for the number of circuit parameters to
+exceed the number of free parameters in an $n$-qubit quantum state. Under these
+conditions, the VQC should be able to prepare any arbitrary $n$-qubit quantum 
+state with high fidelity.
+
+To determine the number of training iterations needed for alternating ansatz 
+VQC, we trained VQC's with varying numbers of layers, and report the CX gate 
+count corresponding to the minimum number of layers needed to achieve an average
+fidelity of 0.95. However, this minimum CX count also depends on the number of 
+gradient descent steps used to optimize the angles: more layers requires less
+training. To ensure a sufficiently large but also fair number of training 
+iterations for each $n$, we trained an
+alternating ansatz with $\frac{1}{2}2^n$ CX gates on the first three random
+quantum states and recorded the number of training iterations required to
+achieve 0.95 fidelity on all three states. Then, the number of training
+iterations was set to the sum of those numbers multiplied by two. This ensured
+that the number of training iterations was approximately six times as many as
+actually necessary for that specific number of qubits, preventing insufficient
+training from marring the results.
+
+Finally, CX gate count experiments were not run for the uniformly controlled 
+gates method. This is because the number of gates for this exact method depends
+on the qiskit transpiler's, sometimes finding good optimizations for the
+linear nearest neighbor architecture, sometimes failing to. However, using the
+exact nature of this algorithm, it was determined that this method uses
+$2\times 2^n + 2n - 19$ CX gates to prepare an $n$-qubit quantum state (proof given in the Appendix). 
+
+\subsection{Results}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{Timing.png}
+\caption{\textit{Total runtime versus number of qubits for each quantum state
+preparation method, plotted on a linear-log scale. Only the ISA and UCG methods
+were able to prepare the quantum states for $n$ up to 14; the alternating
+ansatz method timed out after $n = 9$ and the ADAPT-VQE method timed out after
+$n = 7$. In addition, while the ISA method starts out much faster than the UCG
+method, the UCG curve has a lower slope than the ISA method, indicating that for
+larger $n$, UCG is probably faster than ISA}}
+\label{fig:timing_figure}
+\end{figure}
+
+Figure \ref{fig:timing_figure} shows the runtime versus number of qubits curve for each method. For 
+all numbers of qubits tested, the iterated sparse approximation method had the 
+lowest runtime, however, the ISA method's runtime increases faster with
+qubit number compared to the UCG method. Thus, the UCG method is expected to
+be faster than ISA for more than 14 qubits; both methods were orders of
+magnitude faster than the variational methods. This reflects the intense
+computational cost incurred by rotation angle optimization procedure.
+
+\begin{table}
+\begin{tabular}{c | c | c | c | c}
+  \textbf{Number of qubits} & \textbf{ISA} & \textbf{UCG} & \textbf{ADAPT-VQE} & \textbf{VQC} \\
+  \hline
+  5 & 24.08 & 55 & 13.67 & 14 \\
+  6 & 60.98 & 121 & 25.97 & 28 \\
+  7 & 143.46 & 251 & 47.96 & 48 \\
+  8 & 319.02 & 509 & 88.76 & 91 \\
+  9 & 689.32 & 1023 & 164.22 & 180 \\
+  10 & 1439.6 & 2049 & TIMEOUT & TIMEOUT \\
+  11 & 2952.66 & 4099 & & \\
+  12 & 5991.51 & 8197 & & \\
+  13 & 12123.3 & 16391 & & \\
+  14 & 24538 & 32777 & & \\
+\end{tabular}
+\caption{\textit{Average number of CX gates used to prepare 100
+randomly generated quantum states versus number of qubits. Therefore, the values
+in the ISA and ADAPT-VQE column show two decimal digits. By contrast, the values
+for the UCG column were calculated, and are therefore whole numbers. In
+addition, the values for VQC, alternating ansatz were calculated by finding
+the minimum number of CX gates corresponding to an average fidelity of 0.95 - 
+these are also whole numbers}}
+\end{table}
+
+Table 1 shows the average number of CX gates used by each method as a function
+of the number of qubits. The UCG method uses the most CX gates; the ISA method
+uses somewhat fewer CX gates, while the variational methods use the fewest
+CX gates. The variational methods far outperform the non-variational methods
+in this regard, demonstrating the effectiveness of the variational optimization
+procedure. That said, the ISA method is shown to outperform the UCG method
+without any variational angle tuning procedure, indicating that iterative sparse
+approximation is able to directly find good quantum state preparation gate
+sequences.
+
+The number of free parameters in the quantum circuit is proportional to the
+number of CX gates; the number of free parameters needed is proportional to
+$N = 2^n$, the number of complex amplitudes in the target state. Therefore, we
+hypothesized that the number of CX gates would be approximately proportional
+to $N$, and try to determine the constant factor by graphing CX count divided by
+$N$ as a function of the number of qubits. If the CX count is indeed
+proportional to $N$, then the graph should approach a horizontal line for large
+$n$, with its asymptote being the constant factor.
+
+\begin{figure}[H]
+\includegraphics[width=0.8\textwidth]{CX_n}
+\caption{\textit{Average number of CX gates divided by $N$ versus number of qubits for
+each quantum state preparation method. The curve for VQC and ADAPT-VQE methods
+are truncated because these methods timed out for larger numbers of qubits. The
+curve for UCG is a nearly horizontal line at constant factor 2, reflecting the
+CX count formula for the UCG method. The curve for ISA starts out quite low, but
+increases to around 1.5. The VQC and ADAPT-VQE curves stay quite low,
+approaching 0.3, but the curves are truncated due to timeout.}}
+\label{fig:CX_n}
+\end{figure}
+
+Figure \ref{fig:CX_n} shows the average number of CX gates divided by N as a function of
+qubit number for each method. For the ISA method, the curve increases for 
+$n < 10$, then stabilizes to around 1.5. Thus, we conclude that the ISA method
+will use approximately 1.5$N$ CX gates for randomly sampled quantum states.
+By contrast, the UCG method is shown to use $2N + 2n - 19$, which is 2$N$ to
+leading order. Thus, the ISA method is shown to use approximately 25\% fewer
+CX gates compared to the UCG method. However, both variational methods
+stabilize to around 0.3, which is about 5 times better than ISA, demonstrating
+the effectiveness of the variational tuning procedure.
+
+\section{Discussion and Conclusion}
+The ISA algorithm presented has been shown to use fewer CX gates than exact
+state preparation methods without incurring the variational optimization costs
+associated with VQC algorithms. However, the VQC methods are able to prepare
+quantum states using much fewer CX gates compared to the ISA method, and the 
+UCG method is expected to be faster than ISA for quantum states on more than 14
+qubits. This trend is expected: the less computation time a method uses, the
+lower the quality of its output.
+
+In practice, every CX gate applied introduces hardware noise into the
+computation. Therefore, the design of quantum circuits will require a careful
+balance between using enough CX gates to approximate the desired computation,
+while not using so many CX gates as to corrupt the computation with noise.
+The ISA algorithm lends itself to a simple method for finding this balance:
+if too many CX gates are present in the state preparation algorithm, simply
+delete the gates corresponding to the last iterative sparse approximation; if
+insufficient CX gates are present, perform more sparse approximation iterations.
+This works because each iteration of sparse approximation monotonically
+increases the state preparation fidelity, and each additional iteration provides
+diminishing returns on fidelity increase. By contrast, applying such a procedure
+towards simple VQC would require re-training the quantum circuit depending on
+the number of ansatz layers used. For large numbers of qubits, this would incur
+significantly more computational costs.
+
+In addition, different quantum hardwares have different qubit connectivities.
+The only hardware-dependent steps in the ISA algorithm are enumerating the list
+of available CX gates and computing CXdist, $\text{CXdist}_1$. The former is
+derived directly from the hardware connectivity; the latter can be efficiently
+pre-computed from the list of available CX gates using the worklist algorithm.
+
+However, the ISA method does face several limitations. Most importantly, the ISA
+methods uses four or five times as many CX gates as the VQC methods. This may
+will cause ISA-generated gate sequences to induce much more noise on near term
+quantum hardware compared to VQC-based methods. This problem may eventually be
+mitigated by future work discovering alternative, easy-to-prepare classes of 
+quantum states for approximating dense quantum states, then adapting those
+discoveries towards improving the ISA algorithm. In addition, it may be possible
+to incorporate some variational training alongside ISA. However, the cost 
+function, training schedule, gradient conditioning, and other things
+would need to be carefully designed to ensure such a hybrid method doesn't 
+become a worse version of ADAPT-VQE or pure VQC. 
+
+Another limitation of the ISA method is that it cannot prepare quantum states
+that require extremely high fidelity. This is because, at each iteration, the
+ISA method treats the dense target state as a sparse approximate state.
+Therefore, some percentage of the fidelity will be lost on every iteration of
+the sparse approximation, and chasing down these lost details will require many,
+many more iterations of ISA, leading to extremely long gate sequence. That said,
+many applications of quantum state preparation, such as machine learning and 
+probability distribution function sampling, require only approximate quantum
+state preparation.
+
+To conclude, we present a non-variational framework for approximate quantum 
+state preparation by iteratively applying sparse quantum state preparation
+methods. The non-variational nature of our framework resulted in orders of
+magnitude speedup compared to variational approaches. In addition, the ISA
+method was able to prepare quantum states with 95\% fidelity, using 25\% 
+fewer CX gates compared to the UCG exact method on linear nearest neighbor 
+architectures, demonstrating its ability to find good state preparation 
+sequences. Future work may investigate closing the gap in CX gate count between
+the ISA method and VQC-based methods, perhaps by adapting more advanced sparse
+state preparation techniques or by selectively integrating variational tuning
+procedures. Still, the advantages of our method have been demonstrated.
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+\end{document}

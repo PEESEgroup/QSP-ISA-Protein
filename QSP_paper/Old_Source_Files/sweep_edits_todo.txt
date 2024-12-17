@@ -1,0 +1,14 @@
+Sweep edits for QIP paper:
+- abbreviations (ISA, etc)
+- equation formatting
+- Appendix topics
+- Consistent labels of stuff (c_i)
+- Math errors
+- Consistent usage of "update \ket{c}"
+- Add references
+- Consistent usage of trig functions
+- Consistent usage of $l$ vs "gate list"
+- Is it ok to use "fidelity increase ratio" for both selecting patterns and
+    merge directions?
+- Consistent usage of "proposed method" versus "ISA"
+- CX count for UCG exact, fact check

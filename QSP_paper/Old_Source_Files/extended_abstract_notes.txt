@@ -1,0 +1,15 @@
+Extended abstract points to hit
+- Related work
+    - Sparse quantum state preparation
+    - Dense state preparation
+    - VQC based methods
+    - Genetic algorithm methods
+    - The one non-variational method + the paper showing it to be far suboptimal
+- Significant advance over previous work?
+    - We propose a new framework for performing approximate QSP, and we demonstrate the potential of this framework
+    - Compared to entanglement dependent complexity framework, our framework offers much more fine grained control over fidelity vs CX count
+    - Compared to variational approaches, our framework avoids variational tuning -> much less computation time.
+- Obvious questions?
+    - How did you choose those specific sparse approximations? We picked the simplest ones we could think of.
+    - Does VQC improve the output? Yes, but at that point, it became pure VQC
+    - In what situation is this method going to be applied? Improvements in QSP leads to advantages in Monte Carlo sampling and speeding up linear algebra calculations

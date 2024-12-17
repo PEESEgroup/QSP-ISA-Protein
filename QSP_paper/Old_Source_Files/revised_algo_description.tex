@@ -1,0 +1,360 @@
+
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{braket}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\graphicspath{ {./figures} }
+
+\begin{document}
+
+\title{Revised algorithm description section}
+\maketitle
+
+\section{ISA framework and implementation}
+\subsection{ISA framework}
+The ISA framework iterates two steps: select and prepare. In the select step, a
+sparse quantum state $\ket{x'}$ is selected to approximate the target state
+$\ket{x}$. In the prepare step, the quantum state preparation method for
+$\ket{x'}$ is used to approximately prepare $\ket{x}$. The select and prepare
+steps are iterated until the resultant state is sufficiently close to 
+$\ket{0}$.
+$$|\braket{0|x_{final}}|^2 \geq 1 - \epsilon$$
+
+The ISA framework is summarized in Figure [number]. In the following sections, we describe our implementation of the ISA framework,
+starting with some definitions, then the description of a subroutine, followed
+by our sparse quantum state preparation method, after which we give a formal 
+description of the select and prepare steps, and finish by describing some 
+optimizations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.4]{ISA framework}
+\caption{Block diagram summary of the proposed ISA framework}
+\end{figure}
+
+\subsection{Pattern and Substate Definition}
+A $k$-bit pattern over $n$-qubits is defined as a length-$n$ string in 
+$\{0, 1, *\}^n$, containing exactly $k$ `$*$' characters. The parameter $k$ may
+be 0, in which case $p$ would be a length-$n$ bitstring. An $n$-bit integer $i$
+matches a pattern $p$ if each bit in the binary representation of $i$
+matches the corresponding character in $p$ (`$*$' matches both 0 and 1). Then,
+let $I_p$ denote the set of $2^k$ integers that match the $k$-bit pattern $p$.
+
+Next, define the $p$-substate of a quantum state $\ket{x}$ as:
+$$\ket{x}_p = \sum_{i \in I_p}{\ket{i}\braket{i|x}}.$$
+When $\ket{x}$ is written in the computational basis, $\ket{x}_p$ contains the
+subset of basis states $\ket{i}$ where $i$ matches $p$. In most cases, 
+the norm of $\ket{x}_p$ is less than 1, and therefore does not represent a
+proper quantum state, but is instead a complex-valued vector. Still, we define
+the action of quantum gates on these substates as we would for normal quantum
+states.
+
+An X or CX gate may be applied to a pattern $p$ as long as their relevant qubit
+indices do not correspond to indices where $p$ has a $*$. If an X gate
+targeting qubit $i$ is applied to a pattern $p$, the result is $p$ but with
+the $i$th character inverted from 0 to 1 or vice versa. If a CX gate with
+control qubit $i$ and target qubit $j$ is applied to $p$ and $p[i] = 0$, the
+result is $p$; otherwise, the result is $p$ with the $j$th character inverted.
+This behavior of X and CX gates on patterns is chosen to match the behavior of 
+those gates on substates, as described in Lemma 1.
+
+Lemma 1: If an X or CX gate $g$ may be applied to a pattern $p$, then for all 
+quantum states $\ket{x}$, $g(\ket{x}_{p}) = (g\ket{x})_{gp}$.
+
+Proof: Define $g(i)$ such that $g\ket{i} = \ket{g(i)}$. Then,
+one can verify that $g(i) \in I_{gp}$ for all $i \in I_p$. Since applying $g$
+twice, in the context of both patterns and substates, amounts to the identity 
+transformation, 
+$g(j) \in I_p$ for all $j \in I_{gp}$. This implies that $g$ creates a bijection
+between $I_p$ and $I_{gp}$. In addition, given that X and CX gates on quantum
+states represent amplitude permutations in the computational basis,
+$\braket{g(i)|g|x} = \braket{i|x}$. Then,
+$$g(\ket{x}_p) = g\sum_{i \in I_p}{\ket{i}\braket{i|x}}$$
+$$ = \sum_{i \in I_p}{g\ket{i}\braket{g(i)|g|x}}$$
+$$ = \sum_{i \in I_p}{\ket{g(i)}\braket{g(i)|g|x}}$$
+$$ = \sum_{g(i) \in I_{gp}}{\ket{g(i)}\braket{g(i)|g|x}}$$
+$$ = (g\ket{x})_{gp}$$
+as desired.
+
+\subsection{Substate merging}
+Our implementation of the ISA framework makes extensive use of a substate
+merging subroutine, which we describe here. Given a quantum state $\ket{x}$,
+a $k$-bit pattern $p$, and an X gate $g$ that can be applied to $p$, the 
+substate merging subroutine applies a single qubit rotation $R$ to $\ket{x}$ to
+the target qubit of $g$ such that the norm of $(R\ket{x})_p$ is maximized.
+
+Any single qubit rotation can be decomposed into an RZ-RY-RZ sequence.
+Since RZ gates apply only complex phases to amplitudes in the 
+computational basis, the last RZ gate has no effect on the norm of 
+$(R\ket{x})_p$, and can be left out. Thus, we parameterize 
+$R = RY(\theta)RZ(\phi)$.
+
+To compute the optimal $\theta$ and $\phi$, we perform casework on $p[i]$. 
+If $p[i] = 0$, then
+$gp[i] = 1$, and
+$$(R\ket{x})_p = (RY(\theta)RZ(\phi)\ket{x})_p$$
+$$ = cos(\frac{\theta}{2})\ket{x}_p - e^{i\phi}sin(\frac{\theta}{2})(g\ket{x})_{p} \quad \textit{(up to global phase)}$$
+The squared norm of this vector is:
+$$ |(R\ket{x})_p|^2 = \left(cos(\frac{\theta}{2})\bra{x}_p - e^{-i\phi}sin(\frac{\theta}{2})(\bra{x}g)_p\right)\left(cos(\frac{\theta}{2})\ket{x}_p - e^{i\phi}sin(\frac{\theta}{2})(g\ket{x})_p\right)$$
+$$ = cos^2(\frac{\theta}{2})\bra{x}_p\ket{x}_p - 2cos(\frac{\theta}{2})sin(\frac{\theta}{2})\text{Re}(e^{-i\phi}(\bra{x}g)_p\ket{x}_p) + sin^2(\frac{\theta}{2})(\bra{x}g)_p(g\ket{x})_p$$
+$$ = cos^2(\frac{\theta}{2})\bra{x}_p\ket{x}_p - 2cos(\frac{\theta}{2})sin(\frac{\theta}{2})\text{Re}(e^{-i\phi}\bra{x}_{gp}g\ket{x}_p) + sin^2(\frac{\theta}{2})\bra{x}_{gp}\ket{x}_{gp},$$
+Where the last step used Lemma 1 to simplify. The first and third terms of 
+this expression are nonnegative, and do not depend on the sign of $\theta$. 
+Therefore, $\theta$ can be chosen such that the coefficient
+$-2cos(\frac{\theta}{2})sin(\frac{\theta}{2})$ of the second term is positive.
+Then, the expression is maximized when $e^{-i\phi}(\bra{x}_{gp})g\ket{x}_p$
+is a positive real number with no imaginary part, which is achieved by assigning
+$$\phi = \text{phase}(\bra{x}_{gp}g\ket{x}_p)$$
+Performing this substitution and simplifying using half-angle laws gives:
+$$|(R\ket{x})_p|^2 = cos^2(\frac{\theta}{2})\bra{x}_p\ket{x}_p - 2cos(\frac{\theta}{2})sin(\frac{\theta}{2})|\bra{x}_{gp}g\ket{x}_p| + sin^2(\frac{\theta}{2})\bra{x}_{gp}\ket{x}_{gp}$$
+$$ = \frac{1}{2}(1 + cos(\theta))\bra{x}_p\ket{x}_p - sin(\theta)|\bra{x}_{gp}g\ket{x}_p| + \frac{1}{2}(1 - cos(\theta))\bra{x}_{gp}\ket{x}_{gp}$$
+$$ = \frac{1}{2}(\bra{x}_p\ket{x}_p + \bra{x}_{gp}\ket{x}_{gp})
+   + \frac{1}{2}cos(\theta)(\bra{x}_p\ket{x}_p - \bra{x}_{gp}\ket{x}_{gp})
+   + sin(\theta)|\bra{x}_{gp}g\ket{x}_p$$
+This quantity is maximized when 
+$$\theta = -arccos(\frac{A}{\sqrt{A^2 + B^2}})$$
+$$A = \frac{1}{2}(\bra{x}_p\ket{x}_p - \bra{x}_{gp}\ket{x}_{gp})$$
+$$B = |\bra{x}_{gp}g\ket{x}_p|$$
+Once $\theta$ and $\phi$ are determined, $R$ can be constructed. 
+
+In the other
+case, $p[i] = 1$, $gp[i] = 0$. Then,
+$$(R\ket{x})_p = sin(\frac{\theta}{2})(g\ket{x})_p + e^{i\phi}cos(\frac{\theta}{2})\ket{x}_p.$$
+The squared norm of this vector is
+$$ |(R\ket{x})_p|^2 = \left(sin(\frac{\theta}{2})(\bra{x}g)_p + e^{-i\phi}cos(\frac{\theta}{2})\bra{x}_p\right)\left(sin(\frac{\theta}{2})(g\ket{x})_p + e^{i\phi}cos(\frac{\theta}{2})\ket{x}_p\right)$$
+Performing the same calculations as before, this quantity is maximized when
+$$\theta = arccos(\frac{A}{\sqrt{(A^2 + B^2)}})$$
+$$\phi = \text{phase}(\bra{x}_p g\ket{x}_{gp})$$
+where $A$ and $B$ are defined the same as before.
+This procedure is called substate merging because equations [REF] and [REF] show
+that the final substate, $(R\ket{x})_p$, is a linear combination of $\ket{x}_p$
+and $\ket{x}_{gp}$; it's as if $\ket{x}_{gp}$ is merged with 
+$\ket{x}_p$ to form a new, larger-magnitude substate $(R\ket{x})_p$, while some
+residue is left behind at $(R\ket{x})_{gp}$. For this
+reason, the substate merging procedure will be described as ``merging
+$\ket{x}_{gp}$ into $\ket{x}_p$." 
+%In addition, by the norm-preserving properties
+%of quantum gates, $|R\ket{x}_p|^2 + |R\ket{x}_{gp}|^2 = \ket{x}_p^2 
+%+ \ket{x}_{gp}^2 = constant$, therefore, maximizing $|R\ket{x}_p|$ is the same
+%as minimizing $|R\ket{x}_{gp}|$ and vice versa.
+
+In most cases, the substate merging procedure needs to be modified such that it
+doesn't disturb the amplitude at $\ket{0}$. We call this modified procedure
+``controlled substate merging" and define it as follows. Given a quantum state
+$\ket{x}$, a pattern $p$, and a CX gate $g$ that can be applied to $p$ (and 
+$gp \neq p$), the
+controlled substate merging procedure applies a transformation $R$ consisting
+of the CX gate $g$ and single-qubit rotations applied to the target qubit of 
+$g$, such that the norm of $(R\ket{x})_p$ is maximized and 
+$\braket{0|Rx} = \braket{0|x}$, up to global phase.
+
+The substate merging procedure can be adapted for controlled substate merging as follows.
+First, the
+RZ-RY sequence $R'$ is constructed for merging $\ket{x}_p$ into $\ket{x}_{gp}$:
+$$R' = RY(\theta)RZ(\phi).$$
+In this pair of gates, only the RY gate disturbs
+the amplitude at $\ket{0}$, thus, the RY gate is replaced with a controlled-RY
+gate, then decomposed into CX and RY:
+$$R' = CRY(\theta)RZ(\phi)$$
+$$= gRY(-\frac{\theta}{2})gRY(\frac{\theta}{2})RZ(\phi)$$
+where $g$ is the CX gate given in the problem statement. The transformation $R'$
+minimizes $(R'\ket{x})_p$ and maximizes $(R'\ket{x})_{gp}$, whereas the opposite
+effect is desired.
+This problem is amended by removing the trailing $g$ in the gate sequence $R'$
+to get the desired gate sequence $R$:
+$$R = RY(\frac{\theta}{2})gRY(\frac{\theta}{2})RZ(\phi).$$
+
+One interesting property of this specific construction is that, for all 
+integers $i$ where $g\ket{i} = \ket{i}$, $\braket{i|R|x} = \braket{i|x}$ up to
+a complex phase, and the restriction $\braket{0|Rx} = \braket{0|x}$ is a special
+case of this more general property of the construction for controlled substate
+merging. This property will prove useful for our ISA implementation.
+
+\subsection{Sparse quantum state preparation}
+In this work, we consider sparse quantum states of the form:
+$$\ket{x'} = \sum_{i \in I_{p^0}}{c_i\ket{i}} + \sum_{j \in I_p}{c_j\ket{j}}$$
+where $p$ is a $k$-bit pattern, $k \leq 2$, $p^0$ is $p$ but with its `1'
+characters set to 0, and $p \neq p^0$. We also require the `$*$' characters in 
+$p$ to be adjacent
+to each other, if there are two of them, and for all pairs $k$ and $l$
+where $p[k] = p[l] = 1$, there exists no $m$ such that $k < m < l$ and 
+$p[m] = `*'$. Patterns meeting these latter two criteria regarding the
+positioning of `1' and `$*$' characters are called ``compatible", since these
+criteria are necessary for our sparse quantum state preparation
+method to work on linear nearest neighbor architectures specifically.
+
+As a base case, if $p$ contains at most one `1' character, and that `1'
+character is adjacent to a `$*$' character, then $\ket{x'}$ is a $k + 1$-qubit
+quantum state on neighboring qubits; $k + 1 \leq 3$, so existing exact state 
+preparation methods can be used in this case. Otherwise, we can construct a 
+sequence of CX gates
+$g_1, g_2, ..., g_m$ and a sequence of patterns $p_0, p_1, ..., p_m$ such that
+$p_k = g_kp_{k - 1}$ for all $1 \leq k \leq m$, $p_0 = p$, and $p_m$ is a base
+case pattern. For this construction to be possible on linear nearest
+neighbor architectures, the pattern $p$ must satisfy the compatibility criteria
+described above. From here, we construct the sequence $\ket{x'_0}, \ket{x'_1},
+..., \ket{x'_m}$ such that $\ket{x'_k} = g_k\ket{x'_k}$. Repeatedly applying
+Lemma 1 shows that 
+$$\ket{x'_m} = \sum_{i \in I_{p^0}}{c'_i\ket{i}} + \sum_{j \in I_{p_m}}{c'_j\ket{i}},$$
+for some complex amplitudes $c'_i$ and $c'_j$.
+This is $k+1$-qubit quantum state on adjacent qubits, which can be
+prepared by existing methods. In summary, our sparse quantum preparation method
+uses a sequence of CX gates to move the $p$-substate to qubits adjacent to the 
+$p^0$-substate, then applies exact quantum state preparation.
+
+The number of CX gates our method needs to prepare sparse quantum states is
+the minimum possible length $m$ of the CX sequence used to move the 
+$p$-substate plus the number of CX gates needed for the base case. Let cost($p$)
+denote this quantity. Breadth first search can be used to compute cost($p$);
+despite the inefficiency of this approach, the computation for cost($p$) needs 
+to be performed only once and can therefore be precomputed and cached.
+
+\subsection{ISA framework implementation}
+In the previous sections, we described the building blocks for ISA
+implementation; in this section, we assemble the pieces.
+
+For the select step, we enumerate all compatible $k$-bit patterns $p$, with 
+$k \leq 2$. For each pattern, we construct the corresponding (non-normalized) 
+sparse approximation
+$$\ket{x'(p)} = \ket{x}_{p^0} + \ket{x}_{p}.$$
+When the sparse quantum state preparation method is applied to $\ket{x'(p)}$,
+the result is $|\ket{x'(p)}| \ket{0}$; when the same gate sequence is applied
+to $\ket{x}$ to get $\ket{x_1}$, we expect $\braket{0|x} = |\ket{x'(p)}|$.
+This corresponds to a fidelity increase of 
+$\braket{x'(p)|x'(p)} - |\braket{0|x}|^2$ using cost($p$)
+CX gates, or a fidelity increase ratio of
+$$ratio(p) = \frac{\braket{x'(p)|x'(p)} - |\braket{0|x}|^2}{1 + \text{cost}(p)}.$$
+Adding 1 to the denominator is necessary to prevent division by zero errors when
+cost($p$) is zero. In the select step, we greedily choose $p$ to maximize
+$ratio(p)$ and select the corresponding sparse approximation $\ket{x'(p)}$.
+
+In the prepare step, the sparse quantum state preparation method is adapted for
+general quantum state preparation. In our implementation, we replace the
+iterated application of CX gates to move the $p$-substate with the iterated
+application of controlled substate merging. This change allows the $p$-substate
+of $\ket{x}$ to increase in length as it moves towards a base-case pattern,
+instead of keeping the same norm throughout. Also, using controlled substate
+merging in place of CX gates will not affect the $p^0$ substate, as argued
+at the end of [SUBSTATE MERGE SECTION REF]. In addition, we implement a greedy
+selection procedure to construct the pattern sequence $p_0, p_1, ..., p_m$.
+Specifically, we implement prepare using the following procedure:
+\begin{enumerate}
+\item If $p$ is a base case pattern, apply exact quantum state
+preparation and terminate the prepare step.
+\item Otherwise, construct $P$, the set of patterns $p'$ that can be
+reached from $p$ using one CX gate.
+\item For each $p' \in P$, compute the magnitude of the substate that would
+result from merging $\ket{x}_p$ with $\ket{x}_p'$, call this quantity $mag(p')$.
+\item For each $p'$, compute the projected fidelity increase ratio as
+$$ratio(p') = \frac{mag(p') + \bra{x}_{p^0}\ket{x}_{p^0} - |\braket{0|x}|^2}{1 + min(\text{cost}(p), \text{cost}(p'))}$$
+The numerator is the projected fidelity increase after substate merging, while
+the denominator is the projected number of CX gates - one for substate merging,
+and $min(\text{cost}(p), \text{cost}(p')$ to prepare the resulting sparse approximation.
+\item Select $p'$ such that it maximizes ratio($p'$). If cost($p$) $<$ cost($p'$),
+then apply controlled substate merge to merge $\ket{x}_{p'}$ into $\ket{x}_p$.
+Otherwise, controlled substate merge $\ket{x}_{p}$ into $\ket{x}_{p'}$, set
+$p = p'$, and return to the first step.
+\end{enumerate}
+It may seem possible that this procedure will always select $p'$ with 
+$\text{cost}(p') > \text{cost}(p)$ in step 5 and get stuck in an infinite loop.
+However, this will never happen because each time another substate is merged
+into $\ket{x}_p$, an extra CX gate is used. This extra CX gate can only ever
+be justified by a corresponding increase in projected fidelity increase, and
+the projected fidelity increase cannot increase indefinitely.
+
+This concludes the description of our implementation of the select and prepare
+steps of the ISA framework.
+
+\subsection{Optimizations}
+We describe two optimizations to our implementation of the ISA framework:
+refinement by RZ-RY, and retroactive base case reduction.
+\subsubsection{Refinement by RZ-RY}
+Refinement by RZ-RY seeks to apply approximate quantum state preparation to the
+target state $\ket{x}$ without using any CX gates, before applying the ISA
+framework. This is done by selecting a zero-bit pattern $p$ such that 
+$|\ket{x}_p|$ is maximized (ties are broken randomly), then applying substate
+merging several times to eventually merge $\ket{x}_p$ into $\ket{x}_p$. The
+selection procedure resembles the implementation of prepare, but using substate
+merging instead of controlled substate merging:
+\begin{enumerate}
+\item If $p$ is the string of all zeroes, then terminate this procedure.
+Otherwise, continue.
+\item Construct the set $P$, containing zero-bit patterns $p'$ that differ from 
+$p$.
+\item Select $p'$ such that $\ket{x}_{p'}$ is maximized, with ties broken
+randomly.
+\item Let $i$ be the index where $p$ and $p'$ differ. If $p[i] = 0$ then merge
+$\ket{x}_{p'}$ into $\ket{x}_p$, otherwise, merge $\ket{x}_p$ into $\ket{x}_p'$
+and update $p = p'$. Return to step 1.
+\end{enumerate}
+\subsubsection{Retroactive base case reduction}
+When a two-bit pattern $p$ is chosen in the select step, the corresponding
+quantum circuit takes on the structure shown in Figure [number].
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{2-bit case}
+\caption{\textit{The quantum circuit structure for the prepare step for a 2-bit
+pattern}}
+\end{figure}
+
+The three-qubit quantum state preparation step can be broken into two steps:
+disentangling the third qubit, and two-qubit state preparation on the remaining
+two qubits.
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{2-bit case decomp}
+\caption{\textit{The quantum circuit structure for the prepare step for a 2-bit pattern, with the base case decomposed}}
+\end{figure}
+
+If two consecutive iterations of ISA both selected a two-bit pattern, and those
+two patterns had their `$*$' characters on the same two qubits, the resulting
+quantum circuit would have the structure shown in Figure [number].
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.4]{2-bit case copy}
+\caption{\textit{The quantum circuit structure for two consecutive prepare steps
+with the same `$*$' pattern}}
+\end{figure}
+
+The part of the quantum circuit enclosed in dotted lines first performs
+two-qubit state preparation on the lower two qubits, then performs three-qubit
+state preparation on all three relevant qubits. These two transformations have
+the net effect of transforming the three-qubit substate to $\ket{0}$, and can
+instead be replaced by a single three-qubit state preparation routine. This
+procedure saves the one CX gate used by the two-qubit state preparation base 
+case.
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{2-bit case copy decomp}
+\caption{\textit{The quantum circuit structure for two consecutive prepare steps
+with the same `$*$' pattern, simplified}}
+\end{figure}
+
+We use this insight to formally describe the retroactive base case reduction
+procedure. After each iteration of ISA, starting from the second iteration, 
+the gate sequence for the current iteration and the gate sequence for the
+previous iteration are examined. If the current iteration has a three-qubit
+state preparation base case, the preceding gate sequence ends with a
+two-qubit state preparation, that two-qubit state preparation can be commuted 
+with the controlled substate merging section of the current iteration, and the
+two-qubit state preparation applies to two of the three qubits for the base case
+of the current iteration, the two-qubit state preparation part from the
+preceding iteration is deleted, and the three-qubit base case of the current
+iteration is recomputed before going on to the next ISA iteration.
+
+Every step of our implementation of the ISA algorithm has been fully described;
+we summarize our implementation in Figure [number].
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.25]{ISA implementation}
+\caption{Block Diagram summary of our implementation of the ISA framework}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,157 @@
+\begin{thebibliography}{10}
+
+\bibitem{shor1994algorithms}
+Peter~W Shor.
+\newblock Algorithms for quantum computation: discrete logarithms and
+  factoring.
+\newblock In {\em Proceedings 35th annual symposium on foundations of computer
+  science}, pages 124--134. Ieee, 1994.
+
+\bibitem{PhysRevLett.103.150502}
+Aram~W. Harrow, Avinatan Hassidim, and Seth Lloyd.
+\newblock Quantum algorithm for linear systems of equations.
+\newblock {\em Phys. Rev. Lett.}, 103:150502, Oct 2009.
+
+\bibitem{aaronson2015read}
+Scott Aaronson.
+\newblock Read the fine print.
+\newblock {\em Nature Physics}, 11(4):291--293, 2015.
+
+\bibitem{1629135}
+V.V. Shende, S.S. Bullock, and I.L. Markov.
+\newblock Synthesis of quantum-logic circuits.
+\newblock {\em IEEE Transactions on Computer-Aided Design of Integrated
+  Circuits and Systems}, 25(6):1000--1010, 2006.
+
+\bibitem{zhang2020toward}
+Kaining Zhang, Min-Hsiu Hsieh, Liu Liu, and Dacheng Tao.
+\newblock Toward trainability of quantum neural networks.
+\newblock {\em arXiv preprint arXiv:2011.06258}, 2020.
+
+\bibitem{10044235}
+Xiaoming Sun, Guojing Tian, Shuai Yang, Pei Yuan, and Shengyu Zhang.
+\newblock Asymptotically optimal circuit depth for quantum state preparation
+  and general unitary synthesis.
+\newblock {\em IEEE Transactions on Computer-Aided Design of Integrated
+  Circuits and Systems}, pages 1--1, 2023.
+
+\bibitem{bergholm2005quantum}
+Ville Bergholm, Juha~J Vartiainen, Mikko M{\"o}tt{\"o}nen, and Martti~M
+  Salomaa.
+\newblock Quantum circuits with uniformly controlled one-qubit gates.
+\newblock {\em Physical Review A}, 71(5):052330, 2005.
+
+\bibitem{PhysRevA.83.032302}
+Martin Plesch and \ifmmode \check{C}\else~\v{C}\fi{}aslav Brukner.
+\newblock Quantum-state preparation with universal gate decompositions.
+\newblock {\em Phys. Rev. A}, 83:032302, Mar 2011.
+
+\bibitem{zhang2022quantum}
+Xiao-Ming Zhang, Tongyang Li, and Xiao Yuan.
+\newblock Quantum state preparation with optimal circuit depth: Implementations
+  and applications.
+\newblock {\em Physical Review Letters}, 129(23):230504, 2022.
+
+\bibitem{PhysRevA.106.022617}
+Fereshte Mozafari, Giovanni De~Micheli, and Yuxiang Yang.
+\newblock Efficient deterministic preparation of quantum states using decision
+  diagrams.
+\newblock {\em Phys. Rev. A}, 106:022617, Aug 2022.
+
+\bibitem{10.1145/1060590.1060662}
+Michael Ben-Or and Avinatan Hassidim.
+\newblock Fast quantum byzantine agreement.
+\newblock In {\em Proceedings of the Thirty-Seventh Annual ACM Symposium on
+  Theory of Computing}, STOC '05, page 481–485, New York, NY, USA, 2005.
+  Association for Computing Machinery.
+
+\bibitem{9272350}
+Daniel Sierra-Sosa, Michael Telahun, and Adel Elmaghraby.
+\newblock Tensorflow quantum: Impacts of quantum state preparation on quantum
+  machine learning performance.
+\newblock {\em IEEE Access}, 8:215246--215255, 2020.
+
+\bibitem{10.1109/DAC18074.2021.9586240}
+Niels Gleinig and Torsten Hoefler.
+\newblock An efficient algorithm for sparse quantum state preparation.
+\newblock In {\em 2021 58th ACM/IEEE Design Automation Conference (DAC)}, page
+  433–438. IEEE Press, 2021.
+
+\bibitem{Malvetti2021quantumcircuits}
+Emanuel Malvetti, Raban Iten, and Roger Colbeck.
+\newblock Quantum {C}ircuits for {S}parse {I}sometries.
+\newblock {\em {Quantum}}, 5:412, March 2021.
+
+\bibitem{bravyi2022future}
+Sergey Bravyi, Oliver Dial, Jay~M Gambetta, Dar{\'\i}o Gil, and Zaira Nazario.
+\newblock The future of quantum computing with superconducting qubits.
+\newblock {\em Journal of Applied Physics}, 132(16), 2022.
+
+\bibitem{4782917}
+Yuichi Hirata, Masaki Nakanishi, Shigeru Yamashita, and Yasuhiko Nakashima.
+\newblock An efficient method to convert arbitrary quantum circuits to ones on
+  a linear nearest neighbor architecture.
+\newblock In {\em 2009 Third International Conference on Quantum, Nano and
+  Micro Technologies}, pages 26--33, 2009.
+
+\bibitem{Saeedi_Wille_Drechsler_2010}
+Mehdi Saeedi, Robert Wille, and Rolf Drechsler.
+\newblock Synthesis of quantum circuits for linear nearest neighbor
+  architectures.
+\newblock {\em Quantum Information Processing}, 10(3):355–377, Oct 2010.
+
+\bibitem{PhysRevResearch.4.023136}
+Kouhei Nakaji, Shumpei Uno, Yohichi Suzuki, Rudy Raymond, Tamiya Onodera,
+  Tomoki Tanaka, Hiroyuki Tezuka, Naoki Mitsuda, and Naoki Yamamoto.
+\newblock Approximate amplitude encoding in shallow parameterized quantum
+  circuits and its application to financial market indicators.
+\newblock {\em Phys. Rev. Res.}, 4:023136, May 2022.
+
+\bibitem{PhysRevA.98.032309}
+K.~Mitarai, M.~Negoro, M.~Kitagawa, and K.~Fujii.
+\newblock Quantum circuit learning.
+\newblock {\em Phys. Rev. A}, 98:032309, Sep 2018.
+
+\bibitem{Cerezo_Sone_Volkoff_Cincio_Coles_2021}
+M.~Cerezo, Akira Sone, Tyler Volkoff, Lukasz Cincio, and Patrick~J. Coles.
+\newblock Cost function dependent barren plateaus in shallow parametrized
+  quantum circuits.
+\newblock {\em Nature Communications}, 12(1), Mar 2021.
+
+\bibitem{McClean_Boixo_Smelyanskiy_Babbush_Neven_2018}
+Jarrod~R. McClean, Sergio Boixo, Vadim Smelyanskiy, Ryan Babbush, and Hartmut
+  Neven.
+\newblock Barren plateaus in quantum neural network training landscapes.
+\newblock {\em Nature Communications}, 9(1), Nov 2018.
+
+\bibitem{rivera2021avoiding}
+Javier Rivera-Dean, Patrick Huembeli, Antonio Ac{\'\i}n, and Joseph Bowles.
+\newblock Avoiding local minima in variational quantum algorithms with neural
+  networks.
+\newblock {\em arXiv preprint arXiv:2104.02955}, 2021.
+
+\bibitem{maldonado2022error}
+Thomas~J Maldonado, Johannes Flick, Stefan Krastanov, and Alexey Galda.
+\newblock Error rate reduction of single-qubit gates via noise-aware
+  decomposition into native gates.
+\newblock {\em Scientific Reports}, 12(1):6379, 2022.
+
+\bibitem{PhysRevA.77.032320}
+Marko \ifmmode \check{Z}\else \v{Z}\fi{}nidari\ifmmode~\check{c}\else
+  \v{c}\fi{}, Olivier Giraud, and Bertrand Georgeot.
+\newblock Optimal number of controlled-not gates to generate a three-qubit
+  state.
+\newblock {\em Phys. Rev. A}, 77:032320, Mar 2008.
+
+\bibitem{grimsley2019adaptive}
+Harper~R Grimsley, Sophia~E Economou, Edwin Barnes, and Nicholas~J Mayhall.
+\newblock An adaptive variational algorithm for exact molecular simulations on
+  a quantum computer.
+\newblock {\em Nature communications}, 10(1):3007, 2019.
+
+\bibitem{Araujo_Quantum_computing_library_2023}
+Israel~F. Araujo, Ismael C.~S. Araújo, Leon~D. da~Silva, Carsten Blank, and
+  Adenilton~J. da~Silva.
+\newblock {Quantum computing library}, February 2023.
+
+\end{thebibliography}

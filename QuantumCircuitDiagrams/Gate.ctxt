@@ -1,0 +1,15 @@
+#BlueJ class context
+comment0.target=Gate
+comment1.params=other
+comment1.target=boolean\ overlaps(Gate)
+comment2.params=
+comment2.target=int\ minQubit()
+comment3.params=
+comment3.target=int\ maxQubit()
+comment4.params=c\ t
+comment4.target=int\ findMin(int[],\ int)
+comment5.params=c\ t
+comment5.target=int\ findMax(int[],\ int)
+comment6.params=o
+comment6.target=java.lang.Object\ invoke(Operation)
+numComments=7
