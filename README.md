@@ -5,7 +5,7 @@
 
 All folders, except ISA+QSP_Protein, is Ralph's code prior to my collaboration on the project. I will leave it to Ralph to contribute to the README for his code, if requested by QST.
 
-All protein and noisy experiments along with the implementations for ISA and benchmak QSP methods are compiled in ISA+QSP_Protein
+All protein and noisy simulation experiments along with the implementations for ISA and benchmak QSP methods are compiled in ISA+QSP_Protein
 
 ## ISA+QSP_Protein
 
