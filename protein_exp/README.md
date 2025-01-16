@@ -1,6 +1,6 @@
-# protein_exp
+# Protein Experiments
 
-Scripts for executing QSP (Quantum State Preparation) implementations located in the `/cpp` directory.
+Scripts for executing QSP implementations located in the `/cpp` directory and running protein experiments.
 
 ## Files
 - **`isa_cpp_demo.py`**, **`vqc_cpp_demo.py`**, **`search_cpp_demo.py`**  
