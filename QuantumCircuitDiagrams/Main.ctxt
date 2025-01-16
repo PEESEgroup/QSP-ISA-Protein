@@ -1,8 +1,0 @@
-#BlueJ class context
-comment0.target=Main
-comment0.text=\n\ Main\ class\n
-comment1.params=args
-comment1.target=void\ main(java.lang.String[])
-comment2.params=stage
-comment2.target=void\ start(javafx.stage.Stage)
-numComments=3
