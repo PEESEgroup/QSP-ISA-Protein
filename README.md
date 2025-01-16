@@ -1,11 +1,5 @@
 # README 
 
-
-
-
-
-All protein and noisy simulation experiments along with the implementations for ISA and benchmak QSP methods 
-
 ## QSP-ISA-Protein
 
 
