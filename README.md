@@ -9,15 +9,16 @@ All protein and noisy simulation experiments along with the implementations for 
 ## QSP-ISA-Protein
 
 
-  - cpp - Implementations of ISA, ADAPT-VQE, AA-VQC
-  - isa_cpp_demo.py, vqc_cpp_demo.py, search_cpp_demo.py -  python wrappers to cpp and used for protein experiments
-  - isa.py, qc.py, util.py, parser.py, sp3_extension.py, py_demo.py - python implementation of ISA. Not used for final experimentation
-  - isa_cpp_demo.py, vqc_cpp_demo.py, search_cpp_demo.py - Protein experiments for ISA, AA-VQC, and ADAPT-VQE -> results compiled in Protein_Results
-  - noisy_simulation.py - Noisy simulation experiments on 5_qubit_state.txt -> Plots
-  - ucg.exp - UCG runtime experiments
-  - uniprot.py - encoding proteins from Uniprot into quantum states -> Protein_states_100
-  - MPS_in_Qiskit : Github repo for preparing MPS circuits: https://github.com/henrik-dreyer/MPS-in-Qiskit
-  - MPS.py, Protein_MPS - MPS experiments 
+  - cpp - C++ Implementations of ISA, ADAPT-VQE, and AA-VQC
+  - Protein_exp - Protein experiments and QSP scripts
+  - ISA_py - Python implementation of ISA (Not used for final experimentatino)
+  - qiskit_simulations - Experiments for preparing states using ISA on IBM simulator
+  - data_and_logs - results and input/output text files
+
+
+  
+  
+  
 
   
 
