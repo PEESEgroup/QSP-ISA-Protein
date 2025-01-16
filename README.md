@@ -11,7 +11,7 @@ All protein and noisy simulation experiments along with the implementations for 
 
   - cpp - Implementations of ISA, ADAPT-VQE, AA-VQC
   - isa_cpp_demo.py, vqc_cpp_demo.py, search_cpp_demo.py -  python wrappers to cpp and used for protein experiments
-  - isa.py, qc.py, util.py, parser.py - python implementation of ISA. Not used for final experimentation
+  - isa.py, qc.py, util.py, parser.py, sp3_extension.py, py_demo.py - python implementation of ISA. Not used for final experimentation
   - isa_cpp_demo.py, vqc_cpp_demo.py, search_cpp_demo.py - Protein experiments for ISA, AA-VQC, and ADAPT-VQE -> results compiled in Protein_Results
   - noisy_simulation.py - Noisy simulation experiments on 5_qubit_state.txt -> Plots
   - ucg.exp - UCG runtime experiments
