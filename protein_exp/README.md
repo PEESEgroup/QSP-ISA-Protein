@@ -1,8 +1,6 @@
 # Protein Experiments
 
 Scripts for executing QSP implementations located in the `/cpp` directory and running protein experiments.
-
-## Files
 - **`isa_cpp_demo.py`**, **`search_cpp_demo.py`**, **`vqc_cpp_demo.py`**  
   These files are the scripts for the following QSP methods:  
   - **ISA (Iterated Sparse Approximation)**: `isa_cpp_demo.py`  
